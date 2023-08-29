@@ -5,6 +5,7 @@ For more details about this platform, please refer to the documentation at
 https://github.com/custom-components/sensor.personalcapital
 """
 
+from personalcapital import PersonalCapital, RequireTwoFactorException, TwoFactorVerificationModeEnum
 import logging
 import voluptuous as vol
 import json
@@ -17,8 +18,6 @@ from homeassistant.util import Throttle
 import pandas
 
 __version__ = '0.1.1'
-
-REQUIREMENTS = ['personalcapital==1.0.1']
 
 CONF_EMAIL = 'email'
 CONF_PASSWORD = 'password'
