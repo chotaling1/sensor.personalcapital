@@ -5,7 +5,7 @@ For more details about this platform, please refer to the documentation at
 https://github.com/custom-components/sensor.personalcapital
 """
 
-from personalcapital import PersonalCapital, RequireTwoFactorException, TwoFactorVerificationModeEnum
+from personalcapitallocal import PersonalCapital, RequireTwoFactorException, TwoFactorVerificationModeEnum
 import logging
 import voluptuous as vol
 import json
@@ -65,12 +65,11 @@ _LOGGER = logging.getLogger(__name__)
 
 def request_app_setup(hass, config, pc, add_devices, discovery_info=None):
     """Request configuration steps from the user."""
-    from personalcapital import PersonalCapital, RequireTwoFactorException, TwoFactorVerificationModeEnum
     configurator = hass.components.configurator
 
     def personalcapital_configuration_callback(data):
         """Run when the configuration callback is called."""
-        from personalcapital import PersonalCapital, RequireTwoFactorException, TwoFactorVerificationModeEnum
+        from personalcapitallocal import PersonalCapital, RequireTwoFactorException, TwoFactorVerificationModeEnum
         pc.two_factor_authenticate(TwoFactorVerificationModeEnum.SMS, data.get('verification_code'))
         result = pc.authenticate_password(config.get(CONF_EMAIL), config.get(CONF_PASSWORD))
 
@@ -118,7 +117,7 @@ def save_session(hass, session):
 
 def setup_platform(hass, config, add_devices, discovery_info=None):
     """Set up the Personal Capital component."""
-    from personalcapital import PersonalCapital, RequireTwoFactorException, TwoFactorVerificationModeEnum
+    from personalcapitallocal import PersonalCapital, RequireTwoFactorException, TwoFactorVerificationModeEnum
     pc = PersonalCapital()
     session = load_session(hass)
 
