@@ -338,7 +338,7 @@ class PersonalCapitalAccountData(object):
             }
 
         if not self.transactions:
-            self.getTransactions(self)
+            self.getTransactions()
 
     def getTransactions(self):
         now = datetime.now()
