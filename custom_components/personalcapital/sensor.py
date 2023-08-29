@@ -345,7 +345,7 @@ class PersonalCapitalAccountData(object):
         date_format = '%Y-%m-%d'
         start_date = str(now.year) + "-" + str(now.month) + "-1"
         end_date = now.strftime(date_format)
-        transactions_response = pc.fetch('/transaction/getUserTransactions', {
+        transactions_response = self._pc.fetch('/transaction/getUserTransactions', {
             'sort_cols': 'transactionTime',
             'sort_rev': 'true',
             'startDate': start_date,
