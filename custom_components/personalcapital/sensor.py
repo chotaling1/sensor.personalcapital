@@ -9,11 +9,12 @@ import logging
 import voluptuous as vol
 import json
 import time
-from datetime import timedelta
+from datetime import timedelta, date, datetime
 from homeassistant.helpers.entity import Entity
 import homeassistant.helpers.config_validation as cv
 from homeassistant.components.sensor import (PLATFORM_SCHEMA)
 from homeassistant.util import Throttle
+import pandas
 
 __version__ = '0.1.1'
 
@@ -37,6 +38,7 @@ ATTR_OTHER_ASSET = 'other_asset'
 ATTR_OTHER_LIABILITY = 'other_liability'
 ATTR_CREDIT = 'credit'
 ATTR_LOAN = 'loan'
+ATTR_BUDGET_SPENDING = "budget_spending"
 
 SCAN_INTERVAL = timedelta(minutes=5)
 MIN_TIME_BETWEEN_UPDATES = timedelta(minutes=30)
@@ -143,6 +145,7 @@ def continue_setup_platform(hass, config, pc, add_devices, discovery_info=None):
     sensors = []
     categories = config[CONF_CATEGORIES] if len(config[CONF_CATEGORIES]) > 0 else SENSOR_TYPES.keys()
     sensors.append(PersonalCapitalNetWorthSensor(rest_pc, config[CONF_UNIT_OF_MEASUREMENT]))
+    sensors.append(PersonalCapitalBudgetSensor(rest_pc, hass, uom))
     for category in categories:
         sensors.append(PersonalCapitalCategorySensor(hass, rest_pc, uom, category))
     add_devices(sensors, True)
@@ -197,6 +200,58 @@ class PersonalCapitalNetWorthSensor(Entity):
         }
         return attributes
 
+class PersonalCapitalBudgetSensor(Entity):
+    """Representation a monthly spending from personalcapital.com sensor."""
+
+    def __init__(self, hass, rest, unit_of_measurement):
+        self.hass = hass
+        self._rest = rest
+        self._unit_of_measurement = unit_of_measurement
+        self._state = None
+
+    def update(self):
+        """Get the latest state of the sensor."""
+        self.hass.data["budget"] = {'spendCategories':[]}
+        transactionCategories = self._rest.transactions
+        for i in transactionCategories.index:
+            print('Amount spent in ' + transactionCategories['name'][i] + ':', transactionCategories['amount'][i], "\n\n")
+            self.hass.data['budget'].get('spendCategories').append(
+                {
+                    'name': transactionCategories['name'][i],
+                    'amount': transactionCategories['amount'][i]
+                }
+            )
+        
+        self._state = format_balance(False, transactionCategories['amount'].sum())
+
+    @property
+    def name(self):
+        """Return the name of the sensor."""
+        return 'PC Budget'
+
+    @property
+    def state(self):
+        """Return the state of the sensor."""
+        return self._state
+
+    @property
+    def unit_of_measurement(self):
+        """Return the unit of measure this sensor expresses itself in."""
+        return self._unit_of_measurement
+
+    @property
+    def icon(self):
+        """Return the icon to use in the frontend."""
+        return 'mdi:coin'
+
+    @property
+    def device_state_attributes(self):
+        """Return the state attributes of the sensor."""
+        attributes = {
+            ATTR_BUDGET_SPENDING: self.hass.data['budget']
+        }
+        
+        return attributes
 
 class PersonalCapitalCategorySensor(Entity):
     """Representation of a personalcapital.com sensor."""
@@ -266,6 +321,7 @@ class PersonalCapitalAccountData(object):
     def __init__(self, pc, config):
         self._pc = pc
         self.data = None
+        self.transactions = None
         self._config = config
 
     @Throttle(MIN_TIME_BETWEEN_UPDATES)
@@ -276,6 +332,66 @@ class PersonalCapitalAccountData(object):
         if not self.data or not self.data.json()['spHeader']['success']:
             self._pc.login(self._config[CONF_EMAIL], self._config[CONF_PASSWORD])
             self.data = self._pc.fetch('/newaccount/getAccounts')
+
+            current_date = date.now()
+            request_body = {
+                'startDate':str(current_date.year) + '-' + str(current_date.month) + '1',
+                'endDate':str(current_date),
+            }
+
+        if not self.transactions:
+            self.getTransactions(self)
+
+    def getTransactions(self):
+        now = datetime.now()
+        date_format = '%Y-%m-%d'
+        start_date = str(now.year) + "-" + str(now.month) + "-1"
+        end_date = now.strftime(date_format)
+        transactions_response = pc.fetch('/transaction/getUserTransactions', {
+            'sort_cols': 'transactionTime',
+            'sort_rev': 'true',
+            'startDate': start_date,
+            'endDate': end_date,
+            'component': 'DATAGRID'
+        })
+
+        categories = self._pc.fetch('/transactioncategory/getCategories').json()['spData']
+        transactionsData = transactions_response.json()['spData']
+        transactions = transactionsData['transactions']
+
+        splitTransactions = []
+        for i in transactions:
+            if ('splits' in i.keys()):
+                transactions.remove(i)
+                for split in i['splits']:
+                    splitTransactions.append(split)
+
+            
+        df = pandas.DataFrame(transactions)
+        df_filtered = df.loc[df['includeInCashManager'] == True]
+        for category in categories:
+            df_filtered['categoryName'].mask(df_filtered['categoryId'] == category['transactionCategoryId'], category['name'], inplace = True)
+        
+        df_filtered['amount'].mask(
+            (df_filtered['isCashIn'] == True) |
+            (df_filtered['isInterest'] == True) |
+            (df_filtered['isIncome'] == True) |
+            (df_filtered['isCredit'] == True), df['amount'] * -1, inplace=True)
+
+        grouped_df = df_filtered.groupby('categoryName')
+        sum = []
+        for key, item in grouped_df:
+            result = { 'name': key, 'amount': item['amount'].sum(), 'categoryId': item.categoryId.iat[0]}
+            sum.append(result)
+
+        amount_df = pandas.DataFrame(sum, columns=['name', 'amount', 'categoryId'])
+
+        for split in splitTransactions:
+            amount_df['amount'].mask(amount_df['categoryId'] == split['categoryId'], amount_df['amount'] + split['amount'], inplace = True)
+
+        sorted_df = amount_df.sort_values(by=['amount'], ascending = False)
+        self.transactions = sorted_df
+
 
 
 def how_long_ago(last_epoch):
