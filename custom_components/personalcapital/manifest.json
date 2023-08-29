@@ -3,7 +3,7 @@
   "name": "Personal Capital",
   "documentation": "https://github.com/custom-components/sensor.personalcapital/blob/master/README.md",
   "dependencies": [],
-  "codeowners": ["@chotaling1"],
-  "requirements": ["personalcapital==1.0.1","pandas==2.0.3"],
-  "version": "0.1.0"
+  "codeowners": ["@iantrich"],
+  "requirements": ["personalcapital==1.0.1"],
+  "version": "0.1.2"
 }

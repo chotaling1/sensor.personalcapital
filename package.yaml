@@ -1,5 +1,5 @@
-name: Personal Capital w/ Budgeting
-description: 💵 Personal Capital component for Home Assistant that pulls in budgeting data
+name: sensor.personalcapital
+description: 💵 Personal Capital component for Home Assistant
 type: component
 keywords:
   - sensor
@@ -8,9 +8,9 @@ keywords:
   - money
   - accounts
 author:
-  name: Chuck Hotaling
-  email: hoopie165@gmail.com
-  homepage: https://github.com/chotaling1/sensor.personalcapital
+  name: Ian Richardson
+  email: iantrich@gmail.com
+  homepage: https://iantrich.github.io
 license: MIT
 files:
   - custom_components/personalcapital/sensor.py
