@@ -203,7 +203,7 @@ class PersonalCapitalNetWorthSensor(Entity):
 class PersonalCapitalBudgetSensor(Entity):
     """Representation a monthly spending from personalcapital.com sensor."""
 
-    def __init__(self, hass, rest, unit_of_measurement):
+    def __init__(self, rest, hass, unit_of_measurement):
         self.hass = hass
         self._rest = rest
         self._unit_of_measurement = unit_of_measurement
