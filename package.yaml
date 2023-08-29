@@ -14,4 +14,3 @@ author:
 license: MIT
 files:
   - custom_components/personalcapital/sensor.py
-  - custom_components/personalcapital/personalcapitallocal.py
