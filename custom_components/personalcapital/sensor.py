@@ -420,7 +420,7 @@ class PersonalCapitalAccountData(object):
                     splitTransactions.append(split)
 
             
-        df = pandas.DataFrame(transactions)
+        df = pd.DataFrame(transactions)
         df_filtered = df.loc[df['includeInCashManager'] == True]
         for category in categories:
             df_filtered['categoryName'].mask(df_filtered['categoryId'] == category['transactionCategoryId'], category['name'], inplace = True)
@@ -437,7 +437,7 @@ class PersonalCapitalAccountData(object):
             result = { 'name': key, 'amount': item['amount'].sum(), 'categoryId': item.categoryId.iat[0]}
             sum.append(result)
 
-        amount_df = pandas.DataFrame(sum, columns=['name', 'amount', 'categoryId'])
+        amount_df = pd.DataFrame(sum, columns=['name', 'amount', 'categoryId'])
 
         for split in splitTransactions:
             amount_df['amount'].mask(amount_df['categoryId'] == split['categoryId'], amount_df['amount'] + split['amount'], inplace = True)
