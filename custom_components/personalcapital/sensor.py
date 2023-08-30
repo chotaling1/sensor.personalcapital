@@ -381,7 +381,7 @@ class PersonalCapitalAccountData(object):
         self.transactions = None
         self._config = config
 
-    @Throttle(MIN_TIME_BETWEEN_UPDATES)
+    # @Throttle(MIN_TIME_BETWEEN_UPDATES)
     def update(self):
         """Get latest data from personal capital"""
         self.data = self._pc.fetch('/newaccount/getAccounts')
