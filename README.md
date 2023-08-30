@@ -7,13 +7,11 @@ Personal Capital component for [Home Assistant](https://www.home-assistant.io/)
 ![Project Maintenance][maintenance-shield]
 [![GitHub Activity][commits-shield]][commits]
 
-[![Discord][discord-shield]][discord]
-[![Community Forum][forum-shield]][forum]
 
 ## Support
 Hey dude! Help me out for a couple of :beers: or a :coffee:!
 
-[![coffee](https://www.buymeacoffee.com/assets/img/custom_images/black_img.png)](https://www.buymeacoffee.com/zJtVxUAgH)
+[![coffee](https://www.buymeacoffee.com/assets/img/custom_images/black_img.png)](buymeacoffee.com/churchillhd)
 
 To get started put all contents of `/custom_components/personalcapital/` here:
 `<config directory>/custom_components/personalcapital/`. 
@@ -23,7 +21,7 @@ To get started put all contents of `/custom_components/personalcapital/` here:
 ```yaml
 sensor:
   platform: personalcapital
-  email: chuotaling1@email.com
+  email: chotaling1@someemail.com
   password: 12345
   unit_of_measurement: USD
   monitored_categories:
@@ -42,7 +40,7 @@ key | description
 **monitored_categories (Optional)** | Banking categories to monitor. By default all categories are monitored. Options are `investment, mortgage, cash, other_asset, other_liability, credit, loan` 
 ***
 
-**Note: You'll get a text message with your pin code to use on the frontend to configure**
+**Note: You'll get a text message with your pin code to use on the frontend to configure. To do so, go to your entities list, and search for Personal Capital. You should see an entity with type `configurator`**
 
 Due to how `custom_components` are loaded, it is normal to see a `ModuleNotFoundError` error on first boot after adding this, to resolve it, restart Home-Assistant.
 
