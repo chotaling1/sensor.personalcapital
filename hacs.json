@@ -1,0 +1,5 @@
+{
+    "name": "Personal Capital w/Budgeting",
+    "render_readme": true,
+    "domains": ["sensor"]
+}

@@ -17,7 +17,7 @@ from homeassistant.util import Throttle
 import pandas as pd
 from . PersonalCapitalService import RequireTwoFactorException, PersonalCapital, TwoFactorVerificationModeEnum
 
-__version__ = '0.1.1'
+__version__ = '0.2.0'
 
 CONF_EMAIL = 'email'
 CONF_PASSWORD = 'password'
@@ -137,6 +137,7 @@ def continue_setup_platform(hass, config, pc, add_devices, discovery_info=None):
         hass.components.configurator.request_done(_CONFIGURING.pop("personalcapital"))
 
     rest_pc = PersonalCapitalAccountData(pc, config)
+    rest_pc.update()
     uom = config[CONF_UNIT_OF_MEASUREMENT]
     sensors = []
     categories = config[CONF_CATEGORIES] if len(config[CONF_CATEGORIES]) > 0 else SENSOR_TYPES.keys()
@@ -163,7 +164,6 @@ class PersonalCapitalNetWorthSensor(Entity):
         self._state = None
         self._assets = None
         self._liabilities = None
-        self.update()
 
     def update(self):
         """Get the latest state of the sensor."""
@@ -210,8 +210,6 @@ class PersonalCapitalBudgetSensor(Entity):
         self._rest = rest
         self._unit_of_measurement = unit_of_measurement
         self._state = None
-        self._rest.update()
-
 
     def update(self):
         """Get the latest state of the sensor."""
@@ -243,6 +241,11 @@ class PersonalCapitalBudgetSensor(Entity):
     def unit_of_measurement(self):
         """Return the unit of measure this sensor expresses itself in."""
         return self._unit_of_measurement
+    
+    @property
+    def device_class(self):
+        """Return the device class of the sensor."""
+        return "monetary"
 
     @property
     def icon(self):
@@ -267,19 +270,16 @@ class PersonalCapitalBudgetCategorySensor(Entity):
         self._unit_of_measurement = unit_of_measurement
         self._state = format_balance(False, amount)
         self._name = name
-        self._rest.update()
 
     def update(self):
         """Get the latest state of the sensor."""
         self._rest.update()
-
         self.hass.data["budget"] = {'spendCategories':[]}
         transactionCategories = self._rest.transactions
         for i in transactionCategories.index:
             if (transactionCategories['name'][i] == self._name):
                 self._state = format_balance(False, transactionCategories['amount'][i])
         
-
     @property
     def name(self):
         """Return the name of the sensor."""
@@ -289,6 +289,11 @@ class PersonalCapitalBudgetCategorySensor(Entity):
     def state(self):
         """Return the state of the sensor."""
         return self._state
+    
+    @property
+    def device_class(self):
+        """Return the device class of the sensor."""
+        return "monetary"
 
     @property
     def unit_of_measurement(self):
@@ -303,7 +308,6 @@ class PersonalCapitalBudgetCategorySensor(Entity):
     @property
     def extra_state_attributes(self):
         """Return the state attributes of the sensor."""
-        
         return None
 
 class PersonalCapitalCategorySensor(Entity):
@@ -385,12 +389,6 @@ class PersonalCapitalAccountData(object):
         if not self.data or not self.data.json()['spHeader']['success']:
             self._pc.login(self._config[CONF_EMAIL], self._config[CONF_PASSWORD])
             self.data = self._pc.fetch('/newaccount/getAccounts')
-
-            current_date = date.now()
-            request_body = {
-                'startDate':str(current_date.year) + '-' + str(current_date.month) + '1',
-                'endDate':str(current_date),
-            }
 
         if not self.transactions:
             self.getTransactions()

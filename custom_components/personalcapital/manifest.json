@@ -4,6 +4,7 @@
   "documentation": "https://github.com/chotaling1/sensor.personalcapital/blob/master/README.md",
   "dependencies": [],
   "codeowners": ["@chotaling1"],
+  "iot_class": "cloud_polling",
   "requirements": ["pandas==2.0.3"],
   "version": "0.2.0-beta"
 }
