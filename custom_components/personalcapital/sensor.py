@@ -15,7 +15,7 @@ import homeassistant.helpers.config_validation as cv
 from homeassistant.components.sensor import (PLATFORM_SCHEMA)
 from homeassistant.util import Throttle
 import pandas as pd
-from PersonalCapitalService import RequireTwoFactorException, PersonalCapital, TwoFactorVerificationModeEnum
+from . PersonalCapitalService import RequireTwoFactorException, PersonalCapital, TwoFactorVerificationModeEnum
 
 __version__ = '0.1.1'
 
