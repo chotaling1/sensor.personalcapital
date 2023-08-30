@@ -390,7 +390,7 @@ class PersonalCapitalAccountData(object):
             self._pc.login(self._config[CONF_EMAIL], self._config[CONF_PASSWORD])
             self.data = self._pc.fetch('/newaccount/getAccounts')
 
-        if not self.transactions:
+        if self.transactions is None or self.transactions.empty:
             self.getTransactions()
 
     def getTransactions(self):
