@@ -136,30 +136,30 @@ def continue_setup_platform(hass, config, pc, add_devices, discovery_info=None):
     if "personalcapital" in _CONFIGURING:
         hass.components.configurator.request_done(_CONFIGURING.pop("personalcapital"))
 
-    rest_pc = PersonalCapitalAccountData(pc, config)
-    rest_pc.update()
+    coordinator = PersonalDataUpdateCoordinator(pc, config)
+    coordinator.update()
     uom = config[CONF_UNIT_OF_MEASUREMENT]
     sensors = []
     categories = config[CONF_CATEGORIES] if len(config[CONF_CATEGORIES]) > 0 else SENSOR_TYPES.keys()
-    sensors.append(PersonalCapitalNetWorthSensor(rest_pc, config[CONF_UNIT_OF_MEASUREMENT]))
-    sensors.append(PersonalCapitalBudgetSensor(rest_pc, hass, uom))
+    sensors.append(PersonalCapitalNetWorthSensor(coordinator, config[CONF_UNIT_OF_MEASUREMENT]))
+    sensors.append(PersonalCapitalBudgetSensor(coordinator, hass, uom))
 
-    transactionCategories = rest_pc.transactions
+    transactionCategories = coordinator.transactions
     for i in transactionCategories.index:
-        budgetCategorySensor = PersonalCapitalBudgetCategorySensor(rest_pc, hass, uom, transactionCategories['name'][i], transactionCategories['amount'][i])
+        budgetCategorySensor = PersonalCapitalBudgetCategorySensor(coordinator, hass, uom, transactionCategories['name'][i], transactionCategories['amount'][i])
         sensors.append(budgetCategorySensor)
 
     for category in categories:
-        sensors.append(PersonalCapitalCategorySensor(hass, rest_pc, uom, category))
+        sensors.append(PersonalCapitalCategorySensor(hass, coordinator, uom, category))
     add_devices(sensors, True)
 
 
 class PersonalCapitalNetWorthSensor(Entity):
     """Representation of a personalcapital.com net worth sensor."""
 
-    def __init__(self, rest, unit_of_measurement):
+    def __init__(self, coordinator, unit_of_measurement):
         """Initialize the sensor."""
-        self._rest = rest
+        self._coordinator = coordinator
         self._unit_of_measurement = unit_of_measurement
         self._state = None
         self._assets = None
@@ -167,8 +167,8 @@ class PersonalCapitalNetWorthSensor(Entity):
 
     def update(self):
         """Get the latest state of the sensor."""
-        self._rest.update()
-        data = self._rest.data.json()['spData']
+        self._coordinator.update()
+        data = self._coordinator.accountData.json()['spData']
         self._state = data.get('networth', 0.0)
         self._assets = data.get('assets', 0.0)
         self._liabilities = format_balance(True, data.get('liabilities', 0.0))
@@ -313,10 +313,10 @@ class PersonalCapitalBudgetCategorySensor(Entity):
 class PersonalCapitalCategorySensor(Entity):
     """Representation of a personalcapital.com sensor."""
 
-    def __init__(self, hass, rest, unit_of_measurement, sensor_type):
+    def __init__(self, hass, coordinator, unit_of_measurement, sensor_type):
         """Initialize the sensor."""
         self.hass = hass
-        self._rest = rest
+        self._coordinator = coordinator
         self._productType = SENSOR_TYPES[sensor_type][0]
         self._accountType = SENSOR_TYPES[sensor_type][1]
         self._balanceName = SENSOR_TYPES[sensor_type][2]
@@ -327,8 +327,8 @@ class PersonalCapitalCategorySensor(Entity):
 
     def update(self):
         """Get the latest state of the sensor."""
-        self._rest.update()
-        data = self._rest.data.json()['spData']
+        self._coordinator.update()
+        data = self._coordinator.accountData.json()['spData']
         self._state = format_balance(self._inverse_sign, data.get(self._balanceName, 0.0))
         accounts = data.get('accounts')
         self.hass.data[self._productType] = {'accounts': []}
@@ -372,26 +372,42 @@ class PersonalCapitalCategorySensor(Entity):
         return self.hass.data[self._productType]
 
 
-class PersonalCapitalAccountData(object):
+class PersonalDataUpdateCoordinator(object):
     """Get data from personalcapital.com"""
 
     def __init__(self, pc, config):
         self._pc = pc
-        self.data = None
+        self.accountData = None
         self.transactions = None
         self._config = config
+        self._lastUpdate = None
 
-    # @Throttle(MIN_TIME_BETWEEN_UPDATES)
     def update(self):
-        """Get latest data from personal capital"""
-        self.data = self._pc.fetch('/newaccount/getAccounts')
-
-        if not self.data or not self.data.json()['spHeader']['success']:
-            self._pc.login(self._config[CONF_EMAIL], self._config[CONF_PASSWORD])
-            self.data = self._pc.fetch('/newaccount/getAccounts')
+        if (self.shouldUpdate()):
+            """Get latest data from personal capital"""
+            self.accountData = self._pc.fetch('/newaccount/getAccounts')
+            if not self.accountData or not self.accountData.json()['spHeader']['success']:
+                self._pc.login(self._config[CONF_EMAIL], self._config[CONF_PASSWORD])
+                self.accountData = self._pc.fetch('/newaccount/getAccounts')
 
         if self.transactions is None or self.transactions.empty:
             self.getTransactions()
+
+    def shouldUpdate(self):
+        if (self._lastUpdate is None):
+            print("PersonalDataUpdateCoordinator: lastUpdate is null")
+            return True
+        
+        now = datetime.now
+        
+        difference = (now - self._lastUpdate).total_seconds()
+
+        if (difference > 30):
+            print("PersonalDataUpdateCoordinator: will update")
+            return True
+        else:
+            print("PersonalDataUpdateCoordinator: will not update")
+            return False
 
     def getTransactions(self):
         now = datetime.now()
