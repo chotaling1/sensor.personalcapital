@@ -393,14 +393,14 @@ class PersonalDataUpdateCoordinator(object):
         if self.transactions is None or self.transactions.empty:
             self.getTransactions()
 
+        self._lastUpdate = datetime.now()
+
     def shouldUpdate(self):
         if (self._lastUpdate is None):
             print("PersonalDataUpdateCoordinator: lastUpdate is null")
             return True
-        
-        now = datetime.now
-        
-        difference = (now - self._lastUpdate).total_seconds()
+
+        difference = (datetime.now() - self._lastUpdate).total_seconds()
 
         if (difference > 30):
             print("PersonalDataUpdateCoordinator: will update")
