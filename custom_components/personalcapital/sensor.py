@@ -209,6 +209,7 @@ class PersonalCapitalBudgetSensor(Entity):
 
     def update(self):
         """Get the latest state of the sensor."""
+        self._rest.update()
         self.hass.data["budget"] = {'spendCategories':[]}
         transactionCategories = self._rest.transactions
         for i in transactionCategories.index:
@@ -330,7 +331,8 @@ class PersonalCapitalAccountData(object):
         if not self.data or not self.data.json()['spHeader']['success']:
             self._pc.login(self._config[CONF_EMAIL], self._config[CONF_PASSWORD])
             self.data = self._pc.fetch('/newaccount/getAccounts')
-            self.getTransactions()
+
+        self.getTransactions()  
 
     def getTransactions(self):
         now = datetime.now()
