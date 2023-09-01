@@ -13,7 +13,12 @@ from datetime import timedelta, date, datetime
 from homeassistant.helpers.entity import Entity
 import homeassistant.helpers.config_validation as cv
 from homeassistant.components.sensor import (PLATFORM_SCHEMA)
-from homeassistant.util import Throttle
+from homeassistant.helpers.update_coordinator import (
+    CoordinatorEntity,
+    DataUpdateCoordinator,
+    UpdateFailed,
+)
+
 import pandas as pd
 from . PersonalCapitalService import RequireTwoFactorException, PersonalCapital, TwoFactorVerificationModeEnum
 
@@ -116,28 +121,28 @@ def save_session(hass, session):
 
 def setup_platform(hass, config, add_devices, discovery_info=None):
     """Set up the Personal Capital component."""
-    pc = PersonalCapital()
+    personalCapitalService = PersonalCapital()
     session = load_session(hass)
 
     if len(session) > 0:
-        pc.set_session(session)
+        personalCapitalService.set_session(session)
 
         try:
-            pc.login(config.get(CONF_EMAIL), config.get(CONF_PASSWORD))
-            continue_setup_platform(hass, config, pc, add_devices, discovery_info)
+            personalCapitalService.login(config.get(CONF_EMAIL), config.get(CONF_PASSWORD))
+            continue_setup_platform(hass, config, personalCapitalService, add_devices, discovery_info)
         except RequireTwoFactorException:
-            request_app_setup(hass, config, pc, add_devices, discovery_info)
+            request_app_setup(hass, config, personalCapitalService, add_devices, discovery_info)
     else:
-        request_app_setup(hass, config, pc, add_devices, discovery_info)
+        request_app_setup(hass, config, personalCapitalService, add_devices, discovery_info)
 
 
-def continue_setup_platform(hass, config, pc, add_devices, discovery_info=None):
+def continue_setup_platform(hass, config, personalCapitalService, add_devices, discovery_info=None):
     """Set up the Personal Capital component."""
     if "personalcapital" in _CONFIGURING:
         hass.components.configurator.request_done(_CONFIGURING.pop("personalcapital"))
 
-    coordinator = PersonalDataUpdateCoordinator(pc, config)
-    coordinator.update()
+    coordinator = PersonalCapitalDataUpdateCoordinator(hass, personalCapitalService, config)
+    
     uom = config[CONF_UNIT_OF_MEASUREMENT]
     sensors = []
     categories = config[CONF_CATEGORIES] if len(config[CONF_CATEGORIES]) > 0 else SENSOR_TYPES.keys()
@@ -372,42 +377,40 @@ class PersonalCapitalCategorySensor(Entity):
         return self.hass.data[self._productType]
 
 
-class PersonalDataUpdateCoordinator(object):
+class PersonalCapitalDataUpdateCoordinator(DataUpdateCoordinator):
     """Get data from personalcapital.com"""
 
-    def __init__(self, pc, config):
-        self._pc = pc
+    def __init__(self, hass, pc, config):
+        super().__init__(
+            hass,
+            _LOGGER,
+            # Name of the data. For logging purposes.
+            name="My sensor",
+            # Polling interval. Will only be polled if there are subscribers.
+            update_interval = timedelta(minutes=5),
+        )
+
+        self.pc = pc
         self.accountData = None
         self.transactions = None
-        self._config = config
-        self._lastUpdate = None
+        self.config = config
 
-    def update(self):
-        if (self.shouldUpdate()):
-            """Get latest data from personal capital"""
-            self.accountData = self._pc.fetch('/newaccount/getAccounts')
-            if not self.accountData or not self.accountData.json()['spHeader']['success']:
-                self._pc.login(self._config[CONF_EMAIL], self._config[CONF_PASSWORD])
+
+    async def _async_update_data(self):
+        """Get latest data from personal capital"""
+
+        try:
+            async with async_timeout.timeout(10):
                 self.accountData = self._pc.fetch('/newaccount/getAccounts')
+                if not self.accountData or not self.accountData.json()['spHeader']['success']:
+                    self._pc.login(self._config[CONF_EMAIL], self._config[CONF_PASSWORD])
+                    self.accountData = self._pc.fetch('/newaccount/getAccounts')
 
-        if self.transactions is None or self.transactions.empty:
-            self.getTransactions()
-
-        self._lastUpdate = datetime.now()
-
-    def shouldUpdate(self):
-        if (self._lastUpdate is None):
-            print("PersonalDataUpdateCoordinator: lastUpdate is null")
-            return True
-
-        difference = (datetime.now() - self._lastUpdate).total_seconds()
-
-        if (difference > 30):
-            print("PersonalDataUpdateCoordinator: will update")
-            return True
-        else:
-            print("PersonalDataUpdateCoordinator: will not update")
-            return False
+                self.getTransactions()
+        except ApiAuthError as err:
+            raise UpdateFailed(f"Error communicating with API: {err}")
+        except ApiError as err:
+            raise UpdateFailed(f"Error communicating with API: {err}")
 
     def getTransactions(self):
         now = datetime.now()
