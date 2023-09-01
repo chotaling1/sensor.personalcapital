@@ -330,14 +330,6 @@ class PersonalCapitalAccountData(object):
         if not self.data or not self.data.json()['spHeader']['success']:
             self._pc.login(self._config[CONF_EMAIL], self._config[CONF_PASSWORD])
             self.data = self._pc.fetch('/newaccount/getAccounts')
-
-            current_date = date.now()
-            request_body = {
-                'startDate':str(current_date.year) + '-' + str(current_date.month) + '1',
-                'endDate':str(current_date),
-            }
-
-        if not self.transactions:
             self.getTransactions()
 
     def getTransactions(self):
