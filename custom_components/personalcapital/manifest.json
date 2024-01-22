@@ -4,6 +4,6 @@
   "documentation": "https://github.com/chotaling1/sensor.personalcapital/blob/master/README.md",
   "dependencies": [],
   "codeowners": ["@chotaling1"],
-  "requirements": ["pandas==2.2.0"],
+  "requirements": ["pandas==2.1.4"],
   "version": "0.1.5"
 }
